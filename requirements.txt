@@ -1,0 +1,48 @@
+# ============================================================
+# Assistron — Python dependencies
+# Install with: pip install -r requirements.txt
+#
+# Note: ROS 2 packages (rclpy, sensor_msgs, cv_bridge,
+#   franka_msgs, control_msgs) must be installed via apt /
+#   the ROS 2 toolchain and are NOT listed here.
+# ============================================================
+
+# --- Core numerical & vision ---
+numpy
+opencv-python
+scipy
+Pillow
+
+# --- PyTorch (CUDA build recommended) ---
+# For CUDA 12.x: pip install torch --index-url https://download.pytorch.org/whl/cu121
+torch
+torchvision
+triton          # Triton GPU kernels for pi05 Triton inference
+
+# --- Transformers (PaliGemma tokenizer) ---
+transformers
+
+# --- Robot kinematics ---
+roboticstoolbox-python
+theseus-ai      # SO3 / SE3 Lie-group utilities (used in utils/transform.py)
+
+# --- JAX + Orbax (checkpoint conversion only) ---
+jax[cuda12]     # or jax[cpu] if converting on a CPU machine
+orbax-checkpoint
+
+# --- ZMQ (VLA inference server ↔ client) ---
+pyzmq
+einops
+
+# --- Speech recognition (Whisper HTTP server) ---
+faster-whisper
+soundfile
+sounddevice
+librosa
+pynput          # push-to-talk keyboard listener
+
+# --- OpenPI client (image pre-processing) ---
+openpi-client
+
+# --- Motion planning ---
+curobo          # NVIDIA cuRobo (GPU-accelerated); follow official install guide
