@@ -28,7 +28,7 @@ Real-world VLA failures are rarely *semantic* — they are *spatial*, concentrat
 
 The system policy is:
 
-$$\pi_{\text{sys}}(\boldsymbol{a}|\boldsymbol{s}) = (1 - \mathbb{I}_{\text{int}})\,\pi_{\text{vla}}(\boldsymbol{a}|\boldsymbol{s}) + \mathbb{I}_{\text{int}}\,\pi_{\text{shared}}(\boldsymbol{a}|\boldsymbol{s}, \boldsymbol{u})$$
+$$\pi_{\text{sys}}(\boldsymbol{a}|\boldsymbol{s}) = (1 - \mathbb{I}_{\text{int}})\ \pi_{\text{vla}}(\boldsymbol{a}|\boldsymbol{s}) + \mathbb{I}_{\text{int}}\ \pi_{\text{shared}}(\boldsymbol{a}|\boldsymbol{s}, \boldsymbol{u})$$
 
 where the intervention indicator $\mathbb{I}_{\text{int}}$ is triggered by the interaction detector or by a non-zero joystick input. The shared policy adds an analytical flow-matching guidance term:
 
