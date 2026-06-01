@@ -15,40 +15,7 @@ from launch.actions import ExecuteProcess
 
 
 def generate_launch_description():
-    # === TF Broadcasters ===
-    # TF: fr3_link0 → ref_frame
-    tf1 = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='static_tf_fr3_to_ref',
-        arguments=[
-            '0.735097', '0.646207', '0.664998',    # translation (x y z)
-            '-0.370981', '-0.863263', '0.320188', '0.120952',  # quaternion (x y z w)
-            'fr3_link0', 'ref_frame'
-        ]
-    )
-    # TF: fr3_link0 → ref_frame
-    # tf1 = Node(
-    #     package='tf2_ros',
-    #     executable='static_transform_publisher',
-    #     name='static_tf_fr3_to_ref',
-    #     arguments=[
-    #         '0.749022', '0.656649', '0.659689',
-    #         '-0.382599', '-0.868189', '0.293314', '0.117616',
-    #         'fr3_link0', 'ref_frame'
-    #     ]
-    # )
-    # TF: ref_frame → camera_link
-    tf2 = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='static_tf_ref_to_cam',
-        arguments=[
-            '-0.0010067', '0.014068', '-0.002151',
-            '0.49272', '-0.49219', '0.50886', '0.50601',
-            'ref_frame', 'camera_link'
-        ]
-    )
+
 
     # RViz
     rviz_node = Node(
@@ -137,9 +104,6 @@ def generate_launch_description():
         declared_arguments + [
             left_camera,
             wrist_camera,
-            # front_camera,
-            # tf1,
-            # tf2,
             rviz_node,
             joy_node,
         ]

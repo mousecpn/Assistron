@@ -131,9 +131,41 @@ tokenizer_path = "google/paligemma-3b-pt-224"   # or local path
 
 ## ▶️ Deployment
 
-Assistron requires **three terminal windows** running concurrently.
+Assistron requires **five terminal windows** running concurrently. Start them in order.
 
-### Terminal 1 — Whisper HTTP server
+### Terminal 1 — Franka robot bringup with robotiq gripper
+
+
+
+```bash
+source /opt/ros/humble/setup.bash
+ros2 launch franka_bringup franka.launch.py \
+    robot_ip:=<ROBOT_IP> arm_id:fr3 hand:=false
+
+ros2 launch robotiq_description robotiq_control.launch.py \
+    com_port:=<COM_PORT>
+
+ros2 service call /robotiq_action_controller/reactivate_gripper std_srvs/srv/Trigger '{}'
+```
+
+Wait until the controller is active (status `active`) before proceeding.
+
+---
+
+
+### Terminal 2 — Cameras & joystick
+
+Starts both RealSense cameras (exterior D435i + wrist D456), the Xbox joystick node, and the static TF publishers.
+
+```bash
+source /opt/ros/humble/setup.bash
+cd assistron
+ros2 launch camera_launch.py
+```
+
+---
+
+### Terminal 3 — Whisper HTTP server
 
 Starts the speech recognition service on port `43100` (default).
 
@@ -154,7 +186,7 @@ Wait until the server prints `Listening on 0.0.0.0:43100` before proceeding.
 
 ---
 
-### Terminal 2 — π0.5 ZMQ inference server
+### Terminal 4 — π0.5 ZMQ inference server
 
 Loads the Triton-accelerated π0.5 model and serves inference requests over ZMQ on port `5555`.
 
@@ -173,9 +205,9 @@ The server prints `[*] Listening on tcp://*:5555` when ready. Inference runs on 
 
 ---
 
-### Terminal 3 — Assistron main node
+### Terminal 5 — Assistron main node
 
-After both servers are running, launch the main ROS 2 control node:
+After all services are running, launch the main ROS 2 control node:
 
 ```bash
 # Source ROS 2 environment
@@ -201,7 +233,7 @@ The node will:
 | Right stick + trigger/bumper | End-effector rotation |
 | **A** button | Close gripper |
 | **B** button | Open gripper |
-| **Y** button | Toggle AUTO / MANUAL mode |
+| **Y** button | Toggle AUTO / ASSIST mode |
 | Hold **X** | Record verbal command (Whisper) |
 
 <!-- ---
