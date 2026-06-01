@@ -50,7 +50,7 @@ if USE_PYREALSENSE:
 class RobotState(Enum):
     STOP         = "stop"
     AUTO         = "auto"
-    SHARED       = "shared_control"
+    ASSIST       = "shared_control"
     MANUAL       = "manual"
 
 
@@ -161,7 +161,7 @@ class Assistron(Node):
         self._intervention_cooldown_sec = 2.0
         self._last_intervention_exit_time = 0.0
 
-        # Cooldown: after entering SHARED (from AUTO), block return to AUTO for N seconds
+        # Cooldown: after entering ASSIST (from AUTO), block return to AUTO for N seconds
         self._shared_cooldown_sec = 1.0
         self._last_shared_enter_time = 0.0
 
@@ -174,6 +174,7 @@ class Assistron(Node):
         self.joint_positions_prev = None
         self.last_execution_time = None
         self.gripper_action_cache = 0.0
+        self.intervention_flag = False
         
 
 
@@ -410,7 +411,7 @@ class Assistron(Node):
     def _transition(self, new_state):
         if new_state != self.fsm_state:
             # Cooldown guard: block AUTO → MANUAL within 2s of leaving MANUAL
-            if (new_state == RobotState.MANUAL and
+            if (new_state == RobotState.ASSIST and
                     self.fsm_state == RobotState.AUTO and
                     time.time() - self._last_intervention_exit_time < self._intervention_cooldown_sec):
                 remaining = self._intervention_cooldown_sec - (time.time() - self._last_intervention_exit_time)
@@ -419,7 +420,7 @@ class Assistron(Node):
                 return
             self.get_logger().info(
                 f"FSM: {self.fsm_state.value} → {new_state.value}")
-            if (new_state == RobotState.SHARED and self.fsm_state == RobotState.AUTO) and self.gripper_action_cache != (self.gripper_state == 'close'): # or (new_state == RobotState.AUTO and self.fsm_state == RobotState.MANUAL):
+            if (new_state == RobotState.ASSIST and self.fsm_state == RobotState.AUTO) and self.intervention_flag == True: # and self.gripper_action_cache != (self.gripper_state == 'close'): # or (new_state == RobotState.AUTO and self.fsm_state == RobotState.MANUAL):
                 self._rumble()
             if (self.fsm_state == RobotState.AUTO and new_state == RobotState.MANUAL) or (self.fsm_state == RobotState.MANUAL and new_state == RobotState.AUTO):
                 self._last_intervention_exit_time = time.time()                
@@ -468,7 +469,7 @@ class Assistron(Node):
 
 
     # ------------------------------------------------------------------
-    # Core inference + execution helper (used by AUTO and SHARED states)
+    # Core inference + execution helper (used by AUTO and ASSIST states)
     # ------------------------------------------------------------------
     def _run_inference_and_execute(self, command_joint_velocity,
                                    gripper_command, blending: bool):
@@ -482,7 +483,7 @@ class Assistron(Node):
         gripper_command : float
             Target gripper position for this iteration.
         blending : bool
-            True  → SHARED mode  (policy_blending applied)
+            True  → ASSIST mode  (policy_blending applied)
             False → AUTO  mode   (pure VLA output)
 
         Returns
@@ -644,15 +645,15 @@ class Assistron(Node):
         agreement = self.cosine_similarity(eef_prediction[:, :6], eef_command[:, :6])
         agreement = np.sum(agreement * gammas[None, :])
         print(f"Agreement between proposed action and command: {agreement:.3f}")
-        if agreement > 0.0:
-            return prediction, True
+        if agreement > 0.4:
+            return prediction
         # elif agreement < 0.3 and agreement > 0.0:
         #     blend_velocity = command_joint_velocity * (1 - agreement) + prediction[:, :7] * agreement
         #     blend_velocity = np.concatenate((blend_velocity, prediction[:, 7:8]), axis=1)  # 保留大模型的抓手指令
         #     return blend_velocity
         else:
             blend_velocity = np.concatenate((command_joint_velocity, prediction[:, 7:8]), axis=1)  # 保留大模型的抓手指令
-            return blend_velocity, False
+            return blend_velocity
     
 
     def acceleration_calculation(self, proposed_action):
@@ -750,7 +751,7 @@ class Assistron(Node):
         self.voice_recorder.update_button(voice > 0.5)
 
         if not self._prompt_is_stop():
-            self._transition(RobotState.SHARED)
+            self._transition(RobotState.ASSIST)
 
     def _handle_auto(self, twist):
         if self._prompt_is_stop():
@@ -759,7 +760,7 @@ class Assistron(Node):
             return
 
         if self._has_user_command(twist):
-            self._transition(RobotState.SHARED)
+            self._transition(RobotState.ASSIST)
             return
 
         if self.pc.robot_error or self.left_img is None or self.wrist_img is None:
@@ -788,7 +789,8 @@ class Assistron(Node):
         if self._vla_wants_gripper_change(action_new, start_idx+1) and self.detector.results is not None and self.detector.results[0]['pred'] == 1:
             # self._transition(RobotState.MANUAL)
             self.gripper_action_cache = 1 - (self.gripper_state == 'close')
-            self._transition(RobotState.SHARED) 
+            self.intervention_flag = True
+            self._transition(RobotState.ASSIST) 
             return
 
 
@@ -800,7 +802,7 @@ class Assistron(Node):
 
     def _handle_shared(self, twist):
         """
-        SHARED CONTROL state: user joystick input blended with VLA.
+        ASSIST CONTROL state: user joystick input blended with VLA.
         Transition (2): prompt contains 'stop'        → STOP
         Transition (6): no user command this iteration → AUTO
         """
@@ -816,13 +818,13 @@ class Assistron(Node):
         if not self._has_user_command(twist):
             elapsed = time.time() - self._last_shared_enter_time
             if elapsed >= self._shared_cooldown_sec:
-                if self.gripper_action_cache == (self.gripper_state == 'close'):
+                if self.intervention_flag == False:
                     self._transition(RobotState.AUTO)
-                    # print(f"FSM: SHARED → AUTO (cooldown {elapsed:.1f}s elapsed)")
+                    # print(f"FSM: ASSIST → AUTO (cooldown {elapsed:.1f}s elapsed)")
 
             else:
                 print(
-                    f"FSM: AUTO blocked from SHARED (cooldown {self._shared_cooldown_sec - elapsed:.1f}s remaining)")
+                    f"FSM: AUTO blocked from ASSIST (cooldown {self._shared_cooldown_sec - elapsed:.1f}s remaining)")
                 self.stop()
             time.sleep(0.01)
             return
@@ -863,7 +865,9 @@ class Assistron(Node):
         target_gripper, gripper_flag = self.grasp(gripper_command)
         if gripper_flag:
             self.pc.grasp(target_gripper)
-            if self.gripper_action_cache == (self.gripper_state == 'close'):
+            if self.intervention_flag == True:
+                self.intervention_flag = False
+            # if self.gripper_action_cache == (self.gripper_state == 'close'):
                 self._transition(RobotState.AUTO)
             return
 
@@ -992,14 +996,16 @@ class Assistron(Node):
             # --- Y button (auto): toggle AUTO ↔ MANUAL ---
             auto_btn = auto > 0.5
             if auto_btn and not self._auto_btn_prev:
-                if self.fsm_state == RobotState.SHARED:
+                if self.fsm_state == RobotState.ASSIST:
                     self.A_cur = None  # restart inference fresh
                     self.gripper_action_cache = (self.gripper_state == 'close')
+                    self.intervention_flag = False
                     self._transition(RobotState.AUTO)
                 elif self.fsm_state == RobotState.AUTO:
                     # self._transition(RobotState.MANUAL)
-                    self.gripper_action_cache = 1-(self.gripper_state == 'close')
-                    self._transition(RobotState.SHARED)
+                    self.intervention_flag = True
+                    # self.gripper_action_cache = 1-(self.gripper_state == 'close')
+                    self._transition(RobotState.ASSIST)
             self._auto_btn_prev = auto_btn
 
 
@@ -1037,7 +1043,7 @@ class Assistron(Node):
             elif self.fsm_state == RobotState.AUTO:
                 self._handle_auto(twist)
 
-            elif self.fsm_state == RobotState.SHARED:
+            elif self.fsm_state == RobotState.ASSIST:
                 self._handle_shared(twist)
 
             elif self.fsm_state == RobotState.MANUAL:
