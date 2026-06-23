@@ -4,9 +4,11 @@
 
 ## Demo
 
-<video src="asset/supplementary_demo.mp4" controls playsinline width="100%"></video>
 
-[Open the supplementary demo video](asset/supplementary_demo.mp4)
+
+https://github.com/user-attachments/assets/ff3bcddb-f922-4b4e-9102-6db1e9c34113
+
+
 
 
 ## 🚀 Highlights
