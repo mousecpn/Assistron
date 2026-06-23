@@ -2,6 +2,12 @@
 
 <!-- > **CoRL 2026 Submission** — Shared autonomy framework for assistive manipulation, no VLA fine-tuning required. -->
 
+## Demo
+
+<video src="asset/supplementary_demo.mp4" controls playsinline width="100%"></video>
+
+[Open the supplementary demo video](asset/supplementary_demo.mp4)
+
 
 ## 🚀 Highlights
 
